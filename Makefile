@@ -8,6 +8,7 @@ include $(setup_file)
 
 
 HPCG_DEPS = src/CG.o \
+			src/parallel_for.o \
 	    src/CG_ref.o \
 	    src/TestCG.o \
 	    src/ComputeResidual.o \
@@ -54,6 +55,9 @@ testing/main.o: ./testing/main.cpp
 	$(CXX) -c $(CXXFLAGS) -I./src $< -o $@
 
 src/CG.o: ./src/CG.cpp
+	$(CXX) -c $(CXXFLAGS) -I./src $< -o $@
+
+src/parallel_for.o: ./src/parallel_for.cpp
 	$(CXX) -c $(CXXFLAGS) -I./src $< -o $@
 
 src/CG_ref.o: ./src/CG_ref.cpp
