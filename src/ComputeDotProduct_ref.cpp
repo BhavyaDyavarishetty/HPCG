@@ -55,25 +55,22 @@ int ComputeDotProduct_ref(const local_int_t n, const Vector & x, const Vector & 
   double * xv = x.values;
   double * yv = y.values;
 #ifndef HPCG_NOHPX
-  std::function<double(local_int_t,local_int_t)> f;
+  auto plus = [](double& a,const double& b) {
+    a += b;
+  };
   if(yv == xv) {
-    f = [xv,yv](local_int_t ilo,local_int_t ihi) {
-      double sum = 0.0;
-      for(local_int_t i=ilo;i<ihi;++i) {
-        sum += xv[i]*xv[i];
-      }
-      return sum;
+    auto f = [xv](local_int_t i) {
+      return xv[i]*xv[i];
     };
+    local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
+      hpx_nprocs,hpx_chunksize,f,0,n,plus,0);
   } else {
-    f = [xv,yv](local_int_t ilo,local_int_t ihi) {
-      double sum = 0.0;
-      for(local_int_t i=ilo;i<ihi;++i) {
-        sum += yv[i]*xv[i];
-      }
-      return sum;
+    auto f = [xv,yv](local_int_t i) {
+      return xv[i]*yv[i];
     };
+    local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
+      hpx_nprocs,hpx_chunksize,f,0,n,plus,0);
   }
-  local_result = parallel_sum(f,0,n,5000000);
 #else
   if (yv==xv) {
 #ifndef HPCG_NOOPENMP

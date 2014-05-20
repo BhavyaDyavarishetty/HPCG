@@ -3,12 +3,16 @@
 #include <functional>
 #include <atomic>
 
+/*
 std::atomic<int> max_threads(0);
 
-double parallel_sum(
-    std::function<double(local_int_t,local_int_t)> f,
-    const local_int_t ilo, const local_int_t ihi,
-    const local_int_t min_chunk_size)
+template<typename Func,typename Iter,typename Reduce>
+auto parallel_sum(
+    Func f,
+    Iter ilo,Inter ihi,
+    Reduc r,
+    decltype(f(ilo)) ident,
+    const local_int_t min_chunk_size) -> decltype(f(ilo))
 {
   const local_int_t imid = (ihi+ilo)>>1;
   if(ilo+min_chunk_size <= imid) {
@@ -24,3 +28,4 @@ double parallel_sum(
     return f(ilo,ihi);
   }
 }
+*/
