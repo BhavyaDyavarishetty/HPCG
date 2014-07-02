@@ -1,7 +1,7 @@
 # -*- Makefile -*-
 
-#arch = 
-setup_file = 
+#arch = ./setup/Make.My_MPI_OMP
+setup_file = ./setup/Make.My_MPI_OMP
 
 #include setup/Make.$(arch)
 include $(setup_file)

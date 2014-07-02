@@ -1,6 +1,5 @@
 
-//@HEADER
-// ***************************************************
+
 //
 // HPCG: High Performance Conjugate Gradient Benchmark
 //
@@ -30,6 +29,7 @@
 #endif
 #include <cassert>
 #include "ComputeDotProduct_ref.hpp"
+#include<hpx/include/algorithm.hpp>
 
 /*!
   Routine to compute the dot product of two vectors where:
@@ -50,7 +50,9 @@ int ComputeDotProduct_ref(const local_int_t n, const Vector & x, const Vector & 
     double & result, double & time_allreduce) {
   assert(x.localLength>=n); // Test vector lengths
   assert(y.localLength>=n);
-
+double arr[n];
+double *a= arr;
+double *r=arr;
   double local_result = 0.0;
   double * xv = x.values;
   double * yv = y.values;
@@ -62,14 +64,25 @@ int ComputeDotProduct_ref(const local_int_t n, const Vector & x, const Vector & 
     auto f = [xv](local_int_t i) {
       return xv[i]*xv[i];
     };
-    local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
-      hpx_nprocs,hpx_chunksize,f,0,n,plus,0);
-  } else {
+ local_result = hpx::parallel::reduce(hpx::parallel::par, xv, xv+n, local_result, [] (double &a, double &b)
+ {
+ return b*b;
+ });
+/* 
+local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
+      hpx_nprocs,hpx_chunksize,f,0,n,plus,0);*/
+
+  }
+ else {
     auto f = [xv,yv](local_int_t i) {
       return xv[i]*yv[i];
     };
-    local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
-      hpx_nprocs,hpx_chunksize,f,0,n,plus,0);
+hpx::parallel::transform(hpx::parallel::par, xv, xv+n, xy, r, [](double a, double b){
+return a*b;
+});
+local_result= hpx::parallel::reduce(hpx::parallel::par, r,r+n, local_result, [] (double a, double b){return a+b;});
+   /* local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
+      hpx_nprocs,hpx_chunksize,f,0,n,plus,0);*/
   }
 #else
   if (yv==xv) {
