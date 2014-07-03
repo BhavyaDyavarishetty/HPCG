@@ -50,7 +50,7 @@ endif()
 # 
 
 
-add_hpx_component(hpcg
+add_hpx_executable(hpcg
    ESSENTIAL
    SOURCES  src/CG.cpp
             src/parallel_for.cpp

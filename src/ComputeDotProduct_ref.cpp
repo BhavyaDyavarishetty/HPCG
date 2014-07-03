@@ -16,9 +16,11 @@
 
  HPCG routine
  */
-
 #ifndef HPCG_NOHPX
-#include "parallel_for.hpp"
+#include<hpx/hpx_init.hpp>
+#include<hpx/include/algorithm.hpp>
+#include<boost/iterator/counting_iterator.hpp>
+#include"parallel_for.hpp"
 #endif
 #ifndef HPCG_NOMPI
 #include <mpi.h>
@@ -29,8 +31,6 @@
 #endif
 #include <cassert>
 #include "ComputeDotProduct_ref.hpp"
-#include<hpx/include/algorithm.hpp>
-
 /*!
   Routine to compute the dot product of two vectors where:
 
@@ -50,9 +50,6 @@ int ComputeDotProduct_ref(const local_int_t n, const Vector & x, const Vector & 
     double & result, double & time_allreduce) {
   assert(x.localLength>=n); // Test vector lengths
   assert(y.localLength>=n);
-double arr[n];
-double *a= arr;
-double *r=arr;
   double local_result = 0.0;
   double * xv = x.values;
   double * yv = y.values;
@@ -77,11 +74,14 @@ local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
     auto f = [xv,yv](local_int_t i) {
       return xv[i]*yv[i];
     };
-hpx::parallel::transform(hpx::parallel::par, xv, xv+n, xy, r, [](double a, double b){
+local_result= hpx::parallel::reduce(hpx::parallel::par, boost::counting_iterator<int>(0), boost::counting_iterator<int>(n),0.0, [xv, yv](double i,double g){
+return i+xv[(int)g]*yv[(int)g];
+});
+/*hpx::parallel::transform(hpx::parallel::par, xv, xv+n, xy, r, [](double a, double b){
 return a*b;
 });
 local_result= hpx::parallel::reduce(hpx::parallel::par, r,r+n, local_result, [] (double a, double b){return a+b;});
-   /* local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
+   local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
       hpx_nprocs,hpx_chunksize,f,0,n,plus,0);*/
   }
 #else
