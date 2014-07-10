@@ -24,7 +24,8 @@
 #ifndef HPCG_NOMPI
 #include <mpi.h> // If this routine is not compiled with HPCG_NOMPI
 #endif
-
+#include<hpx/hpx_init.hpp>
+#include<hpx/hpx.hpp>
 #include <fstream>
 #include <iostream>
 #include <cstdlib>
@@ -34,42 +35,46 @@ using std::cin;
 using std::endl;
 
 #include <vector>
-
-#include "hpcg.hpp"
-
-#include "GenerateGeometry.hpp"
-#include "GenerateProblem.hpp"
-#include "GenerateCoarseProblem.hpp"
-#include "SetupHalo.hpp"
-#include "ExchangeHalo.hpp"
-#include "OptimizeProblem.hpp"
-#include "WriteProblem.hpp"
-#include "ReportResults.hpp"
-#include "mytimer.hpp"
-#include "ComputeSPMV_ref.hpp"
-#include "ComputeMG_ref.hpp"
-#include "ComputeResidual.hpp"
-#include "CG.hpp"
-#include "CG_ref.hpp"
-#include "Geometry.hpp"
-#include "SparseMatrix.hpp"
-#include "Vector.hpp"
-#include "CGData.hpp"
-#include "TestCG.hpp"
-#include "TestSymmetry.hpp"
-#include "TestNorms.hpp"
+#include "../src/hpcg.hpp"
+#include "../src/GenerateGeometry.hpp"
+#include "../src/GenerateProblem.hpp"
+#include "../src/GenerateCoarseProblem.hpp"
+#include "../src/SetupHalo.hpp"
+#include "../src/ExchangeHalo.hpp"
+#include "../src/OptimizeProblem.hpp"
+#include "../src/WriteProblem.hpp"
+#include "../src/ReportResults.hpp"
+#include "../src/mytimer.hpp"
+#include "../src/ComputeSPMV_ref.hpp"
+#include "../src/ComputeMG_ref.hpp"
+#include "../src/ComputeResidual.hpp"
+#include "../src/CG.hpp"
+#include "../src/CG_ref.hpp"
+#include "../src/Geometry.hpp"
+#include "../src/SparseMatrix.hpp"
+#include "../src/Vector.hpp"
+#include "../src/CGData.hpp"
+#include "../src/TestCG.hpp"
+#include "../src/TestSymmetry.hpp"
+#include "../src/TestNorms.hpp"
 
 /*!
   Main driver program: Construct synthetic problem, run V&V tests, compute benchmark parameters, run benchmark, report results.
 
   @param[in]  argc Standard argument count.  Should equal 1 (no arguments passed in) or 4 (nx, ny, nz passed in)
   @param[in]  argv Standard argument array.  If argc==1, argv is unused.  If argc==4, argv[1], argv[2], argv[3] will be interpreted as nx, ny, nz, resp.
-
   @return Returns zero on success and a non-zero value otherwise.
 
 */
-int main(int argc, char * argv[]) {
-
+int hpx_main(int argc, char* argv[])
+ {
+/*
+#ifndef HPCG_HPX
+ ComputeDotProduct_ref(const local_int_t n, const Vector & x, const Vector & y,
+    double & result, double & time_allreduce);
+#else
+main(int argc, char* argv[];)
+} */ 
 #ifndef HPCG_NOMPI
   MPI_Init(&argc, &argv);
 #endif
@@ -293,7 +298,7 @@ int main(int argc, char * argv[]) {
   }
 #endif
 
-  /* This is the timed run for a specified amount of time. */
+  // This is the timed run for a specified amount of time. 
 
   totalNiters = 0;
   optMaxIters = optNiters;
@@ -315,7 +320,7 @@ int main(int argc, char * argv[]) {
   // All processors are needed here.
 #ifdef HPCG_DEBUG
   double residual = 0;
-  ierr = ComputeResidual(A.localNumberOfRows, x, xexact, &residual);
+  ierr = ComputeResidual(A.localNumberOfRows, x, xexact, residual);
   if (ierr) HPCG_fout << "Error in call to compute_residual: " << ierr << ".\n" << endl;
   if (rank==0) HPCG_fout << "Difference between computed and exact  = " << residual << ".\n" << endl;
 #endif
@@ -348,5 +353,12 @@ int main(int argc, char * argv[]) {
 #ifndef HPCG_NOMPI
   MPI_Finalize();
 #endif
-  return 0 ;
+  return hpx::finalize();
+}
+
+int main(int argc, char* argv[])
+{
+std::vector<std::string> cfg;
+cfg.push_back("hpx.os_threads=" +boost::lexical_cast<std::string>(hpx::threads::hardware_concurrency()));
+    return hpx::init(argc, argv,cfg);
 }

@@ -18,7 +18,9 @@
  */
 #ifndef HPCG_NOHPX
 #include<hpx/hpx_init.hpp>
+#include<hpx/hpx.hpp>
 #include<hpx/include/algorithm.hpp>
+#include<hpx/include/numeric.hpp>
 #include<boost/iterator/counting_iterator.hpp>
 #include"parallel_for.hpp"
 #endif
@@ -29,6 +31,7 @@
 #ifndef HPCG_NOOPENMP
 #include <omp.h>
 #endif
+#include<time.h>
 #include <cassert>
 #include "ComputeDotProduct_ref.hpp"
 /*!
@@ -46,6 +49,13 @@
 
   @see ComputeDotProduct
 */
+
+using hpx::util::make_zip_iterator;
+using hpx::util::tuple;
+using hpx::util::make_tuple;
+using hpx::util::get;
+
+
 int ComputeDotProduct_ref(const local_int_t n, const Vector & x, const Vector & y,
     double & result, double & time_allreduce) {
   assert(x.localLength>=n); // Test vector lengths
@@ -53,41 +63,54 @@ int ComputeDotProduct_ref(const local_int_t n, const Vector & x, const Vector & 
   double local_result = 0.0;
   double * xv = x.values;
   double * yv = y.values;
-#ifndef HPCG_NOHPX
+#ifdef HPCG_NOHPX
+//clock_t t1, t2;
+//t1=clock();
+// double t_a =0.0, t_b=0.0;                                                      
+// t_a=omp_get_wtime(); 
   auto plus = [](double& a,const double& b) {
     a += b;
   };
+  
   if(yv == xv) {
-    auto f = [xv](local_int_t i) {
-      return xv[i]*xv[i];
-    };
- local_result = hpx::parallel::reduce(hpx::parallel::par, xv, xv+n, local_result, [] (double &a, double &b)
- {
- return b*b;
- });
-/* 
-local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
-      hpx_nprocs,hpx_chunksize,f,0,n,plus,0);*/
+   local_result =
+        hpx::parallel::reduce(
+            hpx::parallel::par,
+            boost::counting_iterator<size_t>(0),
+            boost::counting_iterator<size_t>(n),
+            0.0,
+            std::plus<double>(),
+            [&xv](size_t i){
+                return xv[i] * xv[i];
+            }
+        );
+
 
   }
  else {
-    auto f = [xv,yv](local_int_t i) {
-      return xv[i]*yv[i];
-    };
-local_result= hpx::parallel::reduce(hpx::parallel::par, boost::counting_iterator<int>(0), boost::counting_iterator<int>(n),0.0, [xv, yv](double i,double g){
-return i+xv[(int)g]*yv[(int)g];
-});
-/*hpx::parallel::transform(hpx::parallel::par, xv, xv+n, xy, r, [](double a, double b){
-return a*b;
-});
-local_result= hpx::parallel::reduce(hpx::parallel::par, r,r+n, local_result, [] (double a, double b){return a+b;});
-   local_result += parallel_sum<decltype(f),local_int_t,decltype(plus)>(
-      hpx_nprocs,hpx_chunksize,f,0,n,plus,0);*/
+
+    // the result of the execution will be stored in location 0 of the tuple
+    local_result =
+        hpx::parallel::reduce(
+            hpx::parallel::par,
+            boost::counting_iterator<size_t>(0),
+            boost::counting_iterator<size_t>(n),
+            0.0,
+            std::plus<double>(),
+            [&xv,&yv](size_t i){
+                return xv[i] * yv[i];
+            }
+        );
+
   }
+
 #else
-  if (yv==xv) {
+clock_t t1, t2; 
+ t1=clock(); 
+ if (yv==xv) {
 #ifndef HPCG_NOOPENMP
-    #pragma omp parallel for reduction (+:local_result)
+  // clock_t t1, t2;                                                                  
+ #pragma omp parallel for reduction (+:local_result)
 #endif
     for (local_int_t i=0; i<n; i++) local_result += xv[i]*xv[i];
   } else {
@@ -96,8 +119,13 @@ local_result= hpx::parallel::reduce(hpx::parallel::par, r,r+n, local_result, [] 
 #endif
     for (local_int_t i=0; i<n; i++) local_result += xv[i]*yv[i];
   }
+t2=clock();                                                                      
+float diff((float)t2-(float)t1);                                                 
+float seconds= diff/CLOCKS_PER_SEC;                                              
+std::cout<<seconds<<std::endl; 
 #endif
 
+//  std::cout << local_result << std::endl;
 #ifndef HPCG_NOMPI
   // Use MPI's reduce function to collect all partial sums
   double t0 = mytimer();
@@ -106,9 +134,13 @@ local_result= hpx::parallel::reduce(hpx::parallel::par, r,r+n, local_result, [] 
       MPI_COMM_WORLD);
   result = global_result;
   time_allreduce += mytimer() - t0;
-#else
+#else 
   result = local_result;
 #endif
-
-  return(0);
-}
+//t2=clock();
+//float diff((float)t2-(float)t1);
+//float seconds= diff/CLOCKS_PER_SEC;
+//std::cout<<seconds<<std::endl;
+// t_b=omp_get_wtime();                                                             
+//std::cout<<"time taken: "<< (1000*(t_b-t_a)) << std::endl;
+  return(0);}

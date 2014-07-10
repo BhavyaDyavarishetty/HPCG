@@ -49,10 +49,13 @@ endif()
 # Builds
 # 
 
+add_definitions("-DHPCG_NOMPI")
+add_definitions("-DHPCG_DEBUG")
 
 add_hpx_executable(hpcg
    ESSENTIAL
-   SOURCES  src/CG.cpp
+   SOURCES  
+            src/CG.cpp
             src/parallel_for.cpp
             src/CG_ref.cpp
             src/TestCG.cpp
@@ -85,6 +88,7 @@ add_hpx_executable(hpcg
             src/GenerateCoarseProblem.cpp
             src/init.cpp
             src/finalize.cpp
+            testing/main.cpp
    HEADERS  
    COMPONENT_DEPENDENCIES iostreams 
    DEPENDENCIES
