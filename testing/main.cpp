@@ -24,8 +24,10 @@
 #ifndef HPCG_NOMPI
 #include <mpi.h> // If this routine is not compiled with HPCG_NOMPI
 #endif
+#ifndef HPCG_NOHPX
 #include<hpx/hpx_init.hpp>
 #include<hpx/hpx.hpp>
+#endif
 #include <fstream>
 #include <iostream>
 #include <cstdlib>
@@ -66,8 +68,15 @@ using std::endl;
   @return Returns zero on success and a non-zero value otherwise.
 
 */
+
+#ifndef HPCG_NOHPX
 int hpx_main(int argc, char* argv[])
  {
+#else
+int main(int argc, char* argv[])
+{
+#endif
+
 /*
 #ifndef HPCG_HPX
  ComputeDotProduct_ref(const local_int_t n, const Vector & x, const Vector & y,
@@ -353,12 +362,18 @@ main(int argc, char* argv[];)
 #ifndef HPCG_NOMPI
   MPI_Finalize();
 #endif
+#ifndef HPCG_NOHPX
   return hpx::finalize();
+#else
+  return 0;
+#endif
 }
 
+#ifndef HPCG_NOHPX
 int main(int argc, char* argv[])
 {
 std::vector<std::string> cfg;
 cfg.push_back("hpx.os_threads=" +boost::lexical_cast<std::string>(hpx::threads::hardware_concurrency()));
     return hpx::init(argc, argv,cfg);
 }
+#endif

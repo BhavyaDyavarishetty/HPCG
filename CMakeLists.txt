@@ -25,16 +25,37 @@ hpx_link_sys_directories("${BOOST_LIBRARY_DIR}")
 
 
 #Instruct cmake to find the HPX settings
-find_package(HPX REQUIRED)
-set(HPX_RPATH "${CMAKE_BINARY_DIR}/lib/hpx:${HPX_RPATH}:${CMAKE_INSTALL_PREFIX}/lib/hpx")
-include_directories(${HPX_INCLUDE_DIR})
-link_directories(${HPX_LIBRARY_DIR})
 
-find_package(OpenMP REQUIRED)
-if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+
+if(NOT HPCG_NOHPX)
+   find_package(HPX REQUIRED)
+   set(HPX_RPATH "${CMAKE_BINARY_DIR}/lib/hpx:${HPX_RPATH}:${CMAKE_INSTALL_PREFIX}/lib/hpx")
+   include_directories(${HPX_INCLUDE_DIR})
+   link_directories(${HPX_LIBRARY_DIR})
+else()
+   add_definitions("-DHPCG_NOHPX")   
 endif()
+
+
+if(NOT HPCG_NOOPENMP)
+    find_package(OpenMP REQUIRED)
+    if (OPENMP_FOUND)
+        set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    endif()
+else()
+    add_definitions("-DHPCG_NOOPENMP")
+endif()
+
+if(NOT HPCG_NOMPI)
+    find_package(MPI REQUIRED)
+    include_directories(${MPI_INCLUDE_PATH})
+else()
+    add_definitions("-DHPCG_NOMPI")
+endif()
+
+
+
 
 ########################################################################
 # configurations
@@ -49,12 +70,12 @@ endif()
 # Builds
 # 
 
-add_definitions("-DHPCG_NOMPI")
-add_definitions("-DHPCG_DEBUG")
 
-add_hpx_executable(hpcg
-   ESSENTIAL
-   SOURCES  
+if(HPCG_DEBUG)
+    add_definitions("-DHPCG_DEBUG")
+endif()
+
+set(SOURCES
             src/CG.cpp
             src/parallel_for.cpp
             src/CG_ref.cpp
@@ -89,9 +110,34 @@ add_hpx_executable(hpcg
             src/init.cpp
             src/finalize.cpp
             testing/main.cpp
+)
+
+
+
+
+if(HPCG_NOHPX)
+  add_executable(hpcg
+    ${SOURCES}
+  )
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+  if(NOT HPCG_NOMPI)
+     target_link_libraries(hpcg ${MPI_LIBRARIES})
+     if(MPI_COMPILE_FLAGS)
+         set_target_properties(hpcg PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
+     endif()
+     if(MPI_LINK_FLAGS)
+         set_target_properties(hpcg PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+     endif()
+  endif()
+else()
+  add_hpx_executable(hpcg
+   ESSENTIAL
+   SOURCES  
+    ${SOURCES}
    HEADERS  
    COMPONENT_DEPENDENCIES iostreams 
    DEPENDENCIES
-   )
+  )
+endif()
 
 
